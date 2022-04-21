@@ -1,5 +1,6 @@
 package ru.netology.nmedia.ui
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -7,6 +8,7 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
 import ru.netology.nmedia.R
 import ru.netology.nmedia.util.AndroidUtils
@@ -88,10 +90,14 @@ class StatsView @JvmOverloads constructor(
         textSize = fontSize
     }
 
+    var progress = 0F
+    var circular = 0F
+    private var valueAnimator: ValueAnimator? = null
+    private var valueCircularAnimator: ValueAnimator? = null
     var data: List<Float> = emptyList()
         set(value) {
             field = value
-            invalidate()
+            update()
         }
 
 
@@ -112,12 +118,12 @@ class StatsView @JvmOverloads constructor(
         val sumData = data.sum()
         var colorFirst = 0
 
-        var startFrom = -90F
+        var startFrom = 90F * circular
         for ((index, datum) in data.withIndex()) {
             val angle = 360F * (datum/sumData)
             paint.color = colors.getOrNull(index) ?: randomColor()
             if (index == 0) { colorFirst = paint.color }
-            canvas.drawArc(oval, startFrom, angle, false, paint)
+            canvas.drawArc(oval, startFrom  , angle *progress , false, paint)
             startFrom += angle
         }
 
@@ -126,11 +132,42 @@ class StatsView @JvmOverloads constructor(
 
 
         canvas.drawText(
-            "%.2f%%".format(sumData),
+            "%.2f%%".format(data.sum() * 100),
             center.x,
             center.y + textPaint.textSize / 4,
             textPaint,
         )
+    }
+
+    private fun update() {
+        valueAnimator?.let {
+            it.removeAllListeners()
+            it.cancel()
+        }
+        progress = 0F
+        circular = 0F
+
+        valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
+            addUpdateListener { anim ->
+                progress = anim.animatedValue as Float
+                invalidate()
+            }
+            duration = 5000
+            interpolator = LinearInterpolator()
+        }.also {
+            it.start()
+        }
+
+        valueCircularAnimator = ValueAnimator.ofFloat(0F, 10F).apply {
+            addUpdateListener { anim ->
+                circular = anim.animatedValue as Float
+                invalidate()
+            }
+            duration = 5000
+            interpolator = LinearInterpolator()
+        }.also {
+            it.start()
+        }
     }
 
     private fun randomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
